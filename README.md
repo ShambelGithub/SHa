@@ -17,7 +17,7 @@ Public procurement represents a significant economic force, accounting for 12-20
 
 ## Contents
 
-- **[Main Thesis Document](thesis.md)** - Complete thesis with all chapters
+- **[Main Thesis Document](thesis.md)** - Complete thesis with all chapters (~50,000 words)
   - Abstract
   - Introduction
   - Literature Review
@@ -28,6 +28,10 @@ Public procurement represents a significant economic force, accounting for 12-20
   - Conclusions and Recommendations
   - References
   - Appendices
+
+- **[Executive Summary](executive-summary.md)** - Concise overview of key findings, methodology, and recommendations
+
+- **[Policy Brief](policy-brief.md)** - Actionable policy recommendations with implementation roadmap and resource requirements
 
 ## Key Topics
 
@@ -57,6 +61,27 @@ Public procurement represents a significant economic force, accounting for 12-20
 ## Keywords
 
 Public procurement, digital startups, innovation policy, entrepreneurship, sustainability, government contracts, small business support, SBIR, G-Cloud, procurement frameworks
+
+## How to Use This Repository
+
+**For Academic Readers:**
+- Start with the [complete thesis](thesis.md) for comprehensive coverage of theory, methodology, and findings
+- Review the [references section](thesis.md#references) for academic literature
+
+**For Policymakers:**
+- Begin with the [policy brief](policy-brief.md) for actionable recommendations and implementation roadmap
+- Review the [executive summary](executive-summary.md) for evidence-based findings
+- See the [case studies](thesis.md#52-comparative-policy-analysis) in the thesis for jurisdiction-specific examples
+
+**For Practitioners and Startups:**
+- Read the [executive summary](executive-summary.md) for understanding of barriers and support mechanisms
+- Review the [findings section](thesis.md#5-analysis-and-findings) for data on outcomes and success factors
+- Check the [policy recommendations](thesis.md#72-evidence-based-policy-recommendations) for what effective support looks like
+
+**For Researchers:**
+- Examine the [methodology](thesis.md#4-methodology) for research design details
+- Review the [theoretical framework](thesis.md#3-theoretical-framework) for conceptual foundations
+- See the [appendices](thesis.md#9-appendices) for interview protocols and analytical details
 
 ## Author
 
