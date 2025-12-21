@@ -1,0 +1,39 @@
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Build artifacts (if any tools generate them)
+*.pdf
+*.docx
+*.aux
+*.log
+*.out
+*.toc
+
+# Python cache (if any Python scripts are used)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Node modules (if any Node tools are used)
+node_modules/
+npm-debug.log*
+
+# Local notes and drafts
+notes/
+drafts/
+.notes
+NOTES.md
