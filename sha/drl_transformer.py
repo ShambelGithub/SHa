@@ -255,11 +255,28 @@ class EpisodeRewardTracker:
 class SimpleRoutePlanner:
     def __init__(self, network: MandlNetwork):
         self.network = network
+        self._adjacency = _build_adjacency(self.network.num_stops, self.network.links)
+        self._nodes = sorted(self._adjacency.keys())
 
-    def select_routes(self, num_routes: int, max_length: int) -> list[list[int]]:
+    def select_routes(self, num_routes: int, max_length: int, start_offset: int = 0) -> list[list[int]]:
+        """Select deterministic routes with optional start node rotation.
+
+        Args:
+            num_routes: Number of routes to build.
+            max_length: Maximum stops per route.
+            start_offset: Rotation offset applied to starting nodes.
+
+        Returns:
+            List of routes, each a list of stop indices.
+        """
         routes = []
-        adjacency = _build_adjacency(self.network.num_stops, self.network.links)
-        start_nodes = list(adjacency.keys())[:num_routes]
+        adjacency = self._adjacency
+        nodes = self._nodes
+        if not nodes:
+            return routes
+        offset = start_offset % len(nodes)
+        rotated = nodes[offset:] + nodes[:offset]
+        start_nodes = rotated[:num_routes]
         for start in start_nodes:
             route = [start]
             current = start
@@ -276,6 +293,9 @@ class SimpleRoutePlanner:
                 current = next_node
             routes.append(route)
         return routes
+
+    def num_nodes(self) -> int:
+        return len(self._nodes)
 
     def compute_route_travel_time(self, route: list[int]) -> float:
         travel_time = 0.0
@@ -298,6 +318,53 @@ def generate_episode_rewards(tracker: EpisodeRewardTracker, num_episodes: int, r
     for episode in range(num_episodes):
         tracker.record(reward_fn(episode))
     return tracker.values()
+
+
+def learning_curve_multiplier(
+    episode: int,
+    total_episodes: int,
+    warmup_ratio: float = 0.2,
+    mid_ratio: float = 0.7,
+    min_multiplier: float = 0.4,
+    max_multiplier: float = 1.0,
+) -> float:
+    """Shape reward multipliers to mimic warmup, growth, and convergence phases.
+
+    Args:
+        episode: Episode index starting from 0.
+        total_episodes: Total number of episodes. Returns max_multiplier when <= 1.
+        warmup_ratio: Fraction of training spent in the warmup phase.
+        mid_ratio: Fraction of training spent up to the mid phase end.
+        min_multiplier: Minimum reward multiplier.
+        max_multiplier: Maximum reward multiplier.
+    """
+    # Shape constants chosen to mimic learning dynamics:
+    # - warmup_scale keeps rewards nearly flat early (20% of range)
+    # - mid_scale creates a quadratic rise in mid-training (60% of range)
+    # - plateau_* values flatten convergence with gentle smoothing
+    warmup_scale = 0.2  # 20% of range by end of warmup to keep early rewards flat.
+    mid_scale = 0.6  # 60% quadratic growth during mid phase to mimic learning acceleration.
+    plateau_base = 0.8  # Start convergence at 80% of range for near-flat tail.
+    plateau_gain = 0.2  # Final 20% gained smoothly during convergence.
+    plateau_rate = 3.0  # Exponential smoothing rate to gently flatten convergence.
+    if total_episodes <= 1:
+        return max_multiplier
+    progress = max(0.0, min(1.0, episode / (total_episodes - 1)))
+    warmup_ratio = max(0.0, min(warmup_ratio, 1.0))
+    mid_ratio = max(warmup_ratio, min(mid_ratio, 1.0))
+    if progress <= warmup_ratio and warmup_ratio > 0:
+        phase = progress / warmup_ratio
+        shaped = warmup_scale * phase
+    elif progress <= mid_ratio and mid_ratio > warmup_ratio:
+        phase = (progress - warmup_ratio) / (mid_ratio - warmup_ratio)
+        shaped = warmup_scale + mid_scale * phase**2
+    else:
+        if mid_ratio == 1.0:
+            shaped = 1.0
+        else:
+            phase = (progress - mid_ratio) / (1.0 - mid_ratio)
+            shaped = plateau_base + plateau_gain * (1 - math.exp(-plateau_rate * phase))
+    return min_multiplier + shaped * (max_multiplier - min_multiplier)
 
 
 def _load_weighted_csv(path: str, field_name: str) -> dict[tuple[int, int], float]:

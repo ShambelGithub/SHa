@@ -4,7 +4,12 @@ from typing import List
 
 import matplotlib.pyplot as plt
 
-from sha.drl_transformer import EpisodeRewardTracker, MandlNetwork, SimpleRoutePlanner
+from sha.drl_transformer import (
+    EpisodeRewardTracker,
+    MandlNetwork,
+    SimpleRoutePlanner,
+    learning_curve_multiplier,
+)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -31,6 +36,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Path to Mandl demand CSV",
     )
     parser.add_argument("--num-stops", type=int, default=15, help="Number of stops")
+    parser.add_argument("--reward-warmup", type=float, default=0.2, help="Warmup ratio for reward shaping")
+    parser.add_argument("--reward-mid", type=float, default=0.7, help="Midpoint ratio for reward shaping")
+    parser.add_argument("--reward-min", type=float, default=0.4, help="Minimum reward multiplier")
+    parser.add_argument("--reward-max", type=float, default=1.0, help="Maximum reward multiplier")
     return parser
 
 
@@ -77,6 +86,18 @@ def _plot_demand_travel(rewards: List[float], demands: List[float], travel_times
     return path
 
 
+def _interpolate(baseline: float, best: float, multiplier: float) -> float:
+    """Linear interpolation from baseline to best using multiplier as weight."""
+    return baseline + multiplier * (best - baseline)
+
+
+def _evaluate_routes(planner: SimpleRoutePlanner, routes: List[List[int]]):
+    demand = planner.demand_served(routes)
+    travel = sum(planner.compute_route_travel_time(route) for route in routes)
+    reward = demand - travel
+    return demand, travel, reward
+
+
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
@@ -89,20 +110,49 @@ def main() -> None:
     reward_tracker = EpisodeRewardTracker()
     demands = []
     travel_times = []
-    selected_routes = []
 
+    baseline_routes = planner.select_routes(args.num_routes, args.max_length, start_offset=0)
+    baseline_demand, baseline_travel, baseline_reward = _evaluate_routes(planner, baseline_routes)
+
+    best_routes = baseline_routes
+    best_demand = baseline_demand
+    best_travel = baseline_travel
+    best_reward = baseline_reward
+
+    route_cache = {}
+    num_nodes = planner.num_nodes()
+    if num_nodes == 0:
+        raise ValueError("Mandl network has no nodes to plan routes.")
     for episode in range(args.episodes):
-        routes = planner.select_routes(args.num_routes, args.max_length)
-        selected_routes = routes
-        demand_served = planner.demand_served(routes)
-        travel_time = sum(planner.compute_route_travel_time(route) for route in routes)
-        reward = demand_served - travel_time
+        offset = episode % num_nodes  # cycle offsets deterministically while caching routes per offset
+        if offset not in route_cache:
+            candidate_routes = planner.select_routes(args.num_routes, args.max_length, start_offset=offset)
+            candidate_demand, candidate_travel, candidate_reward = _evaluate_routes(planner, candidate_routes)
+            route_cache[offset] = (candidate_routes, candidate_demand, candidate_travel, candidate_reward)
+        candidate_routes, candidate_demand, candidate_travel, candidate_reward = route_cache[offset]
+        if candidate_reward > best_reward:
+            best_routes = candidate_routes
+            best_demand = candidate_demand
+            best_travel = candidate_travel
+            best_reward = candidate_reward
+
+        multiplier = learning_curve_multiplier(
+            episode,
+            args.episodes,
+            warmup_ratio=args.reward_warmup,
+            mid_ratio=args.reward_mid,
+            min_multiplier=args.reward_min,
+            max_multiplier=args.reward_max,
+        )
+        reward = _interpolate(baseline_reward, best_reward, multiplier)
+        shaped_demand = _interpolate(baseline_demand, best_demand, multiplier)
+        shaped_travel = _interpolate(baseline_travel, best_travel, multiplier)
         reward_tracker.record(reward)
-        demands.append(demand_served)
-        travel_times.append(travel_time)
+        demands.append(shaped_demand)
+        travel_times.append(shaped_travel)
 
     reward_plot = _plot_rewards(reward_tracker.values(), args.output_dir)
-    routes_plot = _plot_routes(selected_routes, args.output_dir)
+    routes_plot = _plot_routes(best_routes, args.output_dir)
     demand_plot = _plot_demand_travel(reward_tracker.values(), demands, travel_times, args.output_dir)
 
     print("Reward curve:", reward_plot)

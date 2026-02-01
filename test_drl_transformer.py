@@ -7,6 +7,7 @@ from sha.drl_transformer import (
     MandlNetwork,
     SimpleRoutePlanner,
     EpisodeRewardTracker,
+    learning_curve_multiplier,
 )
 
 
@@ -104,3 +105,37 @@ def test_mandl_episode_reward_tracking():
     travel_time = sum(planner.compute_route_travel_time(route) for route in routes)
     tracker.record(demand_served - travel_time)
     assert len(tracker.values()) == 1
+
+
+def test_learning_curve_multiplier_progression():
+    total = 10
+    start = learning_curve_multiplier(0, total)
+    mid = learning_curve_multiplier(5, total)
+    end = learning_curve_multiplier(9, total)
+    assert start < mid < end
+
+
+def test_learning_curve_multiplier_plateaus():
+    total = 30
+    min_multiplier = 0.4
+    max_multiplier = 1.0
+    multiplier_range = max_multiplier - min_multiplier
+    plateau_fraction = 0.25
+    plateau_tolerance = multiplier_range * plateau_fraction  # allow limited tail gain within final quarter of range
+    mid = learning_curve_multiplier(
+        20,
+        total,
+        warmup_ratio=0.2,
+        mid_ratio=0.7,
+        min_multiplier=min_multiplier,
+        max_multiplier=max_multiplier,
+    )
+    end = learning_curve_multiplier(
+        29,
+        total,
+        warmup_ratio=0.2,
+        mid_ratio=0.7,
+        min_multiplier=min_multiplier,
+        max_multiplier=max_multiplier,
+    )
+    assert end - mid < plateau_tolerance

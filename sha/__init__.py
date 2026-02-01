@@ -2,6 +2,7 @@
 
 from .drl_transformer import (
     EpisodeRewardTracker,
+    learning_curve_multiplier,
     MandlNetwork,
     ParetoFrontTracker,
     ParetoPoint,
@@ -14,6 +15,7 @@ from .drl_transformer import (
 
 __all__ = [
     "EpisodeRewardTracker",
+    "learning_curve_multiplier",
     "MandlNetwork",
     "ParetoFrontTracker",
     "ParetoPoint",
