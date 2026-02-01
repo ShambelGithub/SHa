@@ -139,3 +139,19 @@ def test_learning_curve_multiplier_plateaus():
         max_multiplier=max_multiplier,
     )
     assert end - mid < plateau_tolerance
+
+
+def test_single_file_module_imports():
+    import importlib.util
+    from pathlib import Path
+
+    module_path = Path(__file__).resolve().parent / "drl_all_in_one.py"
+    spec = importlib.util.spec_from_file_location("drl_all_in_one", str(module_path))
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    assert hasattr(module, "learning_curve_multiplier")
+    assert hasattr(module, "TransitTransformer")
+    assert hasattr(module, "PPOObjectiveTracker")
+    assert hasattr(module, "MandlNetwork")
+    assert hasattr(module, "SimpleRoutePlanner")

@@ -17,3 +17,7 @@ This repository provides core components for a DRL workflow that embeds transit 
 ### Mandl Network Episode Tracking
 
 `sha.MandlNetwork` loads Mandl CSV inputs, `sha.SimpleRoutePlanner` selects deterministic routes, and `sha.EpisodeRewardTracker` stores per-episode rewards for plotting. `sha.learning_curve_multiplier` shapes reward growth across episodes for a warmup, mid-training parabola, and convergence plateau. See `scripts/mandl_episode_demo.py` for generating reward curves, route travel time, and demand served plots.
+
+### Single-File DRL Module
+
+`drl_all_in_one.py` bundles the transformer, PPO utilities, Mandl helpers, and plotting demo into one file for easy download and execution.
