@@ -4,6 +4,9 @@ from sha.drl_transformer import (
     RouteConstraints,
     TransitMatrixEncoder,
     TransitTransformer,
+    MandlNetwork,
+    SimpleRoutePlanner,
+    EpisodeRewardTracker,
 )
 
 
@@ -88,3 +91,16 @@ def test_pareto_front_tracker_keeps_non_dominated():
     assert (8.0, 6.0) not in objectives
     assert (12.0, 7.0) in objectives
     assert (11.0, 4.0) in objectives
+
+
+def test_mandl_episode_reward_tracking():
+    links_path = "/home/runner/work/SHa/SHa/data/mandl/mandl1_links.csv"
+    demand_path = "/home/runner/work/SHa/SHa/data/mandl/mandl1_demand.csv"
+    network = MandlNetwork.from_csv(links_path, demand_path, num_stops=15)
+    planner = SimpleRoutePlanner(network)
+    tracker = EpisodeRewardTracker()
+    routes = planner.select_routes(num_routes=2, max_length=4)
+    demand_served = planner.demand_served(routes)
+    travel_time = sum(planner.compute_route_travel_time(route) for route in routes)
+    tracker.record(demand_served - travel_time)
+    assert len(tracker.values()) == 1

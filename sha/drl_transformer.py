@@ -1,4 +1,4 @@
-from collections import deque
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -212,6 +212,120 @@ class ParetoFrontTracker:
                 if left_val < right_val:
                     strictly_better = True
         return better_or_equal and strictly_better
+
+
+class MandlNetwork:
+    def __init__(self, num_stops: int, links, demand):
+        self.num_stops = num_stops
+        self.links = links
+        self.demand = demand
+
+    @staticmethod
+    def from_csv(links_path: str, demand_path: str, num_stops: int):
+        links = _load_weighted_csv(links_path, "travel_time")
+        demand = _load_weighted_csv(demand_path, "demand")
+        return MandlNetwork(num_stops=num_stops, links=links, demand=demand)
+
+    def travel_time_matrix(self):
+        return _build_matrix(self.num_stops, self.links)
+
+    def od_matrix(self):
+        return _build_matrix(self.num_stops, self.demand)
+
+    def edge_distance_matrix(self, default_distance: float = 0.0):
+        matrix = _build_matrix(self.num_stops, self.links)
+        for i in range(self.num_stops):
+            for j in range(self.num_stops):
+                if matrix[i][j] == 0:
+                    matrix[i][j] = default_distance
+        return matrix
+
+
+class EpisodeRewardTracker:
+    def __init__(self):
+        self.rewards: list[float] = []
+
+    def record(self, reward: float):
+        self.rewards.append(reward)
+
+    def values(self) -> list[float]:
+        return list(self.rewards)
+
+
+class SimpleRoutePlanner:
+    def __init__(self, network: MandlNetwork):
+        self.network = network
+
+    def select_routes(self, num_routes: int, max_length: int) -> list[list[int]]:
+        routes = []
+        adjacency = _build_adjacency(self.network.num_stops, self.network.links)
+        start_nodes = list(adjacency.keys())[:num_routes]
+        for start in start_nodes:
+            route = [start]
+            current = start
+            while len(route) < max_length:
+                neighbors = sorted(adjacency.get(current, []))
+                next_node = None
+                for neighbor in neighbors:
+                    if neighbor not in route:
+                        next_node = neighbor
+                        break
+                if next_node is None:
+                    break
+                route.append(next_node)
+                current = next_node
+            routes.append(route)
+        return routes
+
+    def compute_route_travel_time(self, route: list[int]) -> float:
+        travel_time = 0.0
+        for i in range(len(route) - 1):
+            travel_time += self.network.links.get((route[i], route[i + 1]), 0.0)
+        return travel_time
+
+    def demand_served(self, routes: list[list[int]]) -> float:
+        served_nodes = set()
+        for route in routes:
+            served_nodes.update(route)
+        total = 0.0
+        for (origin, destination), demand in self.network.demand.items():
+            if origin in served_nodes and destination in served_nodes:
+                total += demand
+        return total
+
+
+def generate_episode_rewards(tracker: EpisodeRewardTracker, num_episodes: int, reward_fn):
+    for episode in range(num_episodes):
+        tracker.record(reward_fn(episode))
+    return tracker.values()
+
+
+def _load_weighted_csv(path: str, field_name: str) -> dict[tuple[int, int], float]:
+    entries: dict[tuple[int, int], float] = {}
+    with open(path, "r", encoding="utf-8") as handle:
+        header = handle.readline().strip().split(",")
+        if header[:2] != ["from", "to"] or header[2] != field_name:
+            raise ValueError(f"Unexpected header in {path}")
+        for line in handle:
+            if not line.strip():
+                continue
+            origin, destination, value = line.strip().split(",")
+            entries[(int(origin) - 1, int(destination) - 1)] = float(value)
+    return entries
+
+
+def _build_matrix(num_stops: int, entries: dict[tuple[int, int], float]):
+    matrix = [[0.0 for _ in range(num_stops)] for _ in range(num_stops)]
+    for (origin, destination), value in entries.items():
+        matrix[origin][destination] = value
+    return matrix
+
+
+def _build_adjacency(num_stops: int, links: dict[tuple[int, int], float]):
+    adjacency: dict[int, set[int]] = defaultdict(set)
+    for (origin, destination) in links:
+        adjacency[origin].add(destination)
+    return adjacency
 
 
 class RouteConstraints:
