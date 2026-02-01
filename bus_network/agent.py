@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, List, Tuple
 
 from .environment import BusTransitEnv
 
@@ -28,16 +28,16 @@ class GreedyTransitAgent:
             done = False
             total_reward = 0.0
             while not done:
-                action, reward = self._best_action(state)
-                state, reward, done, _ = self.env.step(action)
-                total_reward += reward
+                action = self._best_action(state)
+                state, step_reward, done, _ = self.env.step(action)
+                total_reward += step_reward
             reward_history.append(total_reward)
             if total_reward > best_reward:
                 best_reward = total_reward
                 best_state = state
         return TrainingResult(best_state=best_state, best_reward=best_reward, reward_history=reward_history)
 
-    def _best_action(self, state: Tuple[int, ...]) -> Tuple[int, float]:
+    def _best_action(self, state: Tuple[int, ...]) -> int:
         current_reward = self.env.describe()["reward"]
         best_action = 0
         best_reward = current_reward
@@ -48,16 +48,14 @@ class GreedyTransitAgent:
             updated = snapshot[route_index] + delta
             updated = max(self.env.min_frequency, min(self.env.max_frequency, updated))
             snapshot[route_index] = updated
-            self.env._frequencies = snapshot  # local evaluation
-            candidate_reward = self.env.describe()["reward"]
+            candidate_reward = self.env.evaluate_frequencies(snapshot).reward
             if candidate_reward > best_reward:
                 best_reward = candidate_reward
                 best_action = action
-        self.env._frequencies = list(state)
-        return best_action, best_reward
+        return best_action
 
 
-def summarize_training(result: TrainingResult) -> Dict[str, Iterable[float]]:
+def summarize_training(result: TrainingResult) -> Dict[str, object]:
     return {
         "best_reward": result.best_reward,
         "best_state": result.best_state,

@@ -79,17 +79,18 @@ class BusTransitEnv:
         done = self._steps_taken >= self.max_steps
         return self.state, metrics.reward, done, metrics.__dict__
 
-    def _evaluate(self) -> StepMetrics:
+    def _evaluate(self, frequencies: List[int] | None = None) -> StepMetrics:
+        frequencies = list(frequencies) if frequencies is not None else self._frequencies
         coverage = 0.0
         unmet = 0.0
         for demand, frequency, target in zip(
-            self.demand, self._frequencies, self.target_frequencies
+            self.demand, frequencies, self.target_frequencies
         ):
             served_fraction = min(frequency / target, 1.0) if target > 0 else 0.0
             coverage += demand * served_fraction
             unmet += demand * (1.0 - served_fraction)
-        cost = sum(self._frequencies) * self.cost_per_bus
-        balance_penalty = self.balance_weight * _variance(self._frequencies)
+        cost = sum(frequencies) * self.cost_per_bus
+        balance_penalty = self.balance_weight * _variance(frequencies)
         reward = (
             self.coverage_weight * coverage
             - self.unmet_penalty * unmet
@@ -107,3 +108,6 @@ class BusTransitEnv:
     def describe(self) -> Dict[str, float]:
         metrics = self._evaluate()
         return metrics.__dict__.copy()
+
+    def evaluate_frequencies(self, frequencies: List[int]) -> StepMetrics:
+        return self._evaluate(frequencies)
