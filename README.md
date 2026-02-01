@@ -12,4 +12,4 @@ This repository provides core components for a DRL workflow that embeds transit 
 
 ### PPO Objectives & Constraints
 
-`sha.PPOObjectiveTracker` combines weighted objectives for maximizing coverage and minimizing demand-weighted travel time, route length, and transfers. `sha.RouteConstraints` validates the connectivity, route count, stop limits, and simple path requirements.
+`sha.PPOObjectiveTracker` combines weighted objectives for maximizing coverage and minimizing demand-weighted travel time, route length, and transfers. `sha.ParetoFrontTracker` keeps a non-dominated set of multi-objective outcomes to support Pareto front analysis. `sha.RouteConstraints` validates the connectivity, route count, stop limits, and simple path requirements.

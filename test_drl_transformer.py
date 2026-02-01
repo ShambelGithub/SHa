@@ -1,4 +1,10 @@
-from sha.drl_transformer import PPOObjectiveTracker, RouteConstraints, TransitMatrixEncoder, TransitTransformer
+from sha.drl_transformer import (
+    ParetoFrontTracker,
+    PPOObjectiveTracker,
+    RouteConstraints,
+    TransitMatrixEncoder,
+    TransitTransformer,
+)
 
 
 def test_transit_matrix_encoder_shapes():
@@ -68,3 +74,17 @@ def test_route_constraints_validation():
     ]
     constraints = RouteConstraints(num_routes=2, min_stops=2, max_stops=4)
     constraints.validate(routes, demand)
+
+
+def test_pareto_front_tracker_keeps_non_dominated():
+    tracker = ParetoFrontTracker(maximize=[True, False])
+    assert tracker.add([10.0, 5.0]) is True
+    assert tracker.add([8.0, 6.0]) is False
+    assert tracker.add([12.0, 7.0]) is True
+    assert tracker.add([11.0, 4.0]) is True
+    objectives = tracker.objectives()
+    assert len(objectives) == 2
+    assert (10.0, 5.0) not in objectives
+    assert (8.0, 6.0) not in objectives
+    assert (12.0, 7.0) in objectives
+    assert (11.0, 4.0) in objectives

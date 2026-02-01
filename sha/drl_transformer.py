@@ -1,4 +1,5 @@
 from collections import deque
+from dataclasses import dataclass
 from typing import Sequence
 
 import math
@@ -165,6 +166,52 @@ class PPOObjectiveTracker:
             - self.weights["route_length"] * route_length
             - self.weights["transfer"] * transfers
         )
+
+
+@dataclass(frozen=True)
+class ParetoPoint:
+    objectives: tuple[float, ...]
+    payload: object | None = None
+
+
+class ParetoFrontTracker:
+    def __init__(self, maximize: Sequence[bool]):
+        self.maximize = list(maximize)
+        self.front: list[ParetoPoint] = []
+
+    def add(self, objectives: Sequence[float], payload: object | None = None) -> bool:
+        if len(objectives) != len(self.maximize):
+            raise ValueError(
+                f"Objectives length ({len(objectives)}) must match maximize length ({len(self.maximize)})"
+            )
+        candidate = ParetoPoint(tuple(objectives), payload)
+        for point in self.front:
+            if self._dominates(point.objectives, candidate.objectives):
+                return False
+        self.front = [point for point in self.front if not self._dominates(candidate.objectives, point.objectives)]
+        self.front.append(candidate)
+        return True
+
+    def objectives(self) -> list[tuple[float, ...]]:
+        return [point.objectives for point in self.front]
+
+    def _dominates(self, left: Sequence[float], right: Sequence[float]) -> bool:
+        better_or_equal = True
+        strictly_better = False
+        for is_max, left_val, right_val in zip(self.maximize, left, right):
+            if is_max:
+                if left_val < right_val:
+                    better_or_equal = False
+                    break
+                if left_val > right_val:
+                    strictly_better = True
+            else:
+                if left_val > right_val:
+                    better_or_equal = False
+                    break
+                if left_val < right_val:
+                    strictly_better = True
+        return better_or_equal and strictly_better
 
 
 class RouteConstraints:

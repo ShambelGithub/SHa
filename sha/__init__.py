@@ -1,9 +1,18 @@
 """Core DRL Transformer utilities for BTNDP."""
 
-from .drl_transformer import PPOObjectiveTracker, RouteConstraints, TransitMatrixEncoder, TransitTransformer
+from .drl_transformer import (
+    ParetoFrontTracker,
+    ParetoPoint,
+    PPOObjectiveTracker,
+    RouteConstraints,
+    TransitMatrixEncoder,
+    TransitTransformer,
+)
 
 __all__ = [
     "PPOObjectiveTracker",
+    "ParetoFrontTracker",
+    "ParetoPoint",
     "RouteConstraints",
     "TransitMatrixEncoder",
     "TransitTransformer",
